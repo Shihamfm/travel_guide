@@ -195,90 +195,87 @@ def find_location_mentions(query: str):
 
 
 def parse_route(query: str):
+    """
+    Returns:
+    dep_iata, arr_iata
 
+    Can return:
+    None, None  -> global live flights
+    DAC, NRT    -> filtered route
+    DAC, None   -> all flights from DAC
+    None, NRT   -> all flights to NRT
+    """
     q = query.strip()
     q_lower = q.lower()
 
-    # Global / all-country query
+    # 1. Global / all-country query
     global_keywords = [
-        "all country",
-        "all countries",
-        "global flight",
-        "global flights",
-        "all flight",
-        "all flights",
-        "worldwide flight",
-        "worldwide flights",
+        "all country", "all countries", "global flight", "global flights",
+        "all flight", "all flights", "worldwide flight", "worldwide flights",
     ]
-
     if any(keyword in q_lower for keyword in global_keywords):
         return None, None
 
-    # Direct IATA code route: DAC to NRT
+    # 2. Direct IATA code route: e.g., DAC to NRT
     codes = re.findall(r"\b[A-Z]{3}\b", q)
-
     if len(codes) >= 2:
-        dep = codes[0].upper()
-        arr = codes[1].upper()
-        return dep, arr
+        return codes[0].upper(), codes[1].upper()
 
-    # Pattern: from X to Y
-    match = re.search(
-        r"\bfrom\s+(.+?)\s+\bto\s+(.+?)(?:\s+(?:on|for|under|including|with|in|at)\b|[.!?]|$)",
-        q_lower,
-    )
+    # 3. Strict Regex: "from X to Y" or "to Y from X"
+    match_from_to = re.search(r"\bfrom\s+(.+?)\s+\bto\s+(.+?)(?:\s+(?:on|for|under|including|with|in|at)\b|[.!?]|$)", q_lower)
+    match_to_from = re.search(r"\bto\s+(.+?)\s+\bfrom\s+(.+?)(?:\s+(?:on|for|under|including|with|in|at)\b|[.!?]|$)", q_lower)
 
-    if match:
-        origin_text = match.group(1)
-        dest_text = match.group(2)
+    if match_from_to:
+        return resolve_location_to_iata(match_from_to.group(1)), resolve_location_to_iata(match_from_to.group(2))
+    if match_to_from:
+        return resolve_location_to_iata(match_to_from.group(2)), resolve_location_to_iata(match_to_from.group(1))
 
-        dep_iata = resolve_location_to_iata(origin_text)
-        arr_iata = resolve_location_to_iata(dest_text)
-
-        return dep_iata, arr_iata
-
-    # Pattern: to Y from X
-    match = re.search(
-        r"\bto\s+(.+?)\s+\bfrom\s+(.+?)(?:\s+(?:on|for|under|including|with|in|at)\b|[.!?]|$)",
-        q_lower,
-    )
-
-    if match:
-        dest_text = match.group(1)
-        origin_text = match.group(2)
-
-        dep_iata = resolve_location_to_iata(origin_text)
-        arr_iata = resolve_location_to_iata(dest_text)
-
-        return dep_iata, arr_iata
-
-    # Pattern: flights from X
-    match = re.search(r"\bfrom\s+(.+?)(?:[.!?]|$)", q_lower)
-
-    if match:
-        origin_text = match.group(1)
-        dep_iata = resolve_location_to_iata(origin_text)
-        return dep_iata, None
-
-    # Pattern: flights to X
-    match = re.search(r"\bto\s+(.+?)(?:[.!?]|$)", q_lower)
-
-    if match:
-        dest_text = match.group(1)
-        arr_iata = resolve_location_to_iata(dest_text)
-        return None, arr_iata
-
-    # Fallback: find country/city mentions
+    # 4. Find all known locations in the text
     mentions = find_location_mentions(q)
+    
+    dep_text = None
+    arr_text = None
 
-    if len(mentions) >= 2:
-        dep_iata = resolve_location_to_iata(mentions[0])
-        arr_iata = resolve_location_to_iata(mentions[1])
-        return dep_iata, arr_iata
+    # 5. If we found exactly 2 locations, figure out which is which
+    if len(mentions) == 2:
+        for mention in mentions:
+            # If the mention has "from" right before it, it's the departure
+            if re.search(rf"\bfrom\s+{re.escape(mention)}\b", q_lower):
+                dep_text = mention
+            # If the mention has "to" right before it, it's the arrival
+            elif re.search(rf"\bto\s+{re.escape(mention)}\b", q_lower):
+                arr_text = mention
+        
+        # If we only found a preposition for one, infer the other by process of elimination
+        if dep_text and not arr_text:
+            arr_text = [m for m in mentions if m != dep_text][0]
+        elif arr_text and not dep_text:
+            dep_text = [m for m in mentions if m != arr_text][0]
+        elif not dep_text and not arr_text:
+            # If there are no prepositions at all (e.g. "Sri Lanka Malaysia trip")
+            # Default to first mention = origin, second = destination
+            dep_text, arr_text = mentions[0], mentions[1]
 
+        return resolve_location_to_iata(dep_text), resolve_location_to_iata(arr_text)
+
+    # 6. If we only found 1 location
     if len(mentions) == 1:
-        arr_iata = resolve_location_to_iata(mentions[0])
-        return DEFAULT_ORIGIN_IATA, arr_iata
+        mention = mentions[0]
+        # Check if the user specifically asked for flights *from* this place
+        if re.search(rf"\bfrom\s+{re.escape(mention)}\b", q_lower):
+            return resolve_location_to_iata(mention), None
+        
+        # Otherwise, assume it's the destination and use the default origin
+        return DEFAULT_ORIGIN_IATA, resolve_location_to_iata(mention)
+
+    # 7. Absolute Fallback: Loose regex for unknown cities not in your dictionary
+    match_from = re.search(r"\bfrom\s+(.+?)(?:[.!?]|$)", q_lower)
+    match_to = re.search(r"\bto\s+(.+?)(?:[.!?]|$)", q_lower)
+
+    if match_from and not match_to:
+        return resolve_location_to_iata(match_from.group(1)), None
+    if match_to and not match_from:
+        return DEFAULT_ORIGIN_IATA, resolve_location_to_iata(match_to.group(1))
 
     return None, None
 
