@@ -81,6 +81,18 @@ async def travel_planner(request_data: TravelRequest):
                 'error': str(e)
             }
         )
+
+@app.get("/health")
+async def health_check():
+    return {
+        'status': 'ok',
+        'message': 'AI Travel Planner API is running'
+    }
+
+
+@app.get("/favicon.ico")
+async def fevicon():
+    return JSONResponse(content={})
         
 
 if __name__ == '__main__':
