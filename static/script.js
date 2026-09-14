@@ -43,7 +43,11 @@ function showResult(answer, threadId) {
     const threadInfo = document.getElementById("threadInfo");
 
     if (typeof marked !== "undefined") {
-        resultBox.innerHTML = marked.parse(answer);
+        try {
+            resultBox.innerHTML = marked.parse(answer);
+        } catch (e) {
+            resultBox.innerHTML = marked(answer);
+        }
     } else {
         resultBox.innerText = answer;
     }
