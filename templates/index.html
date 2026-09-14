@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Travel Guide</title>
+    
+    <!-- Link to your CSS file -->
+    <link rel="stylesheet" href="/static/style.css?v=2.0">
+    
+    <!-- Google Fonts for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="page-bg">
+        <div class="gradient-overlay"></div>
+    </div>
+
+    <main class="app-container">
+
+        <!-- Hero / Title Section -->
+        <section class="hero-section">
+            <div class="badge">
+                ✈️ TripMate AI — Multi-Agent Travel Planner
+            </div>
+            <h1>
+                Plan Your Perfect Trip with AI
+            </h1>
+            <p>
+                Search flights, discover hotels, and generate a complete travel itinerary in seconds.
+            </p>
+        </section>
+
+        <!-- Input Area Section -->
+        <section class="planner-card">
+            <div class="card-header">
+                <div>
+                    <h2>Where do you want to go?</h2>
+                    <p>
+                        Example: Plan a complete 7 days Japan trip from Bangladesh under 2 lakhs.
+                    </p>
+                </div>
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    Online
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea
+                    id="userInput"
+                    placeholder="Describe your dream vacation..."
+                ></textarea>
+
+                <button id="sendBtn" onclick="sendMessage()">
+                    <span id="btnText">Generate Plan</span>
+                    <span id="btnLoader" class="loader hidden"></span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Popular Destinations Image Grid -->
+        <section class="destinations-section">
+            <h3 class="section-title">Popular Destinations</h3>
+            <div class="destinations-grid">
+                
+                <!-- Destination 1: Sigiriya -->
+                <div class="destination-card" onclick="setPrompt('Plan a 5-day historical trip to Sigiriya, Sri Lanka, including nearby hotels and travel options.')">
+                    <img src="static\image\Sigiriya.jpeg" alt="Sigiriya, Sri Lanka">
+                    <div class="destination-info">
+                        <h4>Sigiriya</h4>
+                        <p>Sri Lanka</p>
+                    </div>
+                </div>
+
+                <!-- Destination 2: Taj Mahal -->
+                <div class="destination-card" onclick="setPrompt('Plan a 3-day cultural tour of the Taj Mahal in Agra, India, with luxury hotel recommendations.')">
+                    <img src="static\image\Taj_Mahal.jpeg" alt="Taj Mahal, India">
+                    <div class="destination-info">
+                        <h4>Taj Mahal</h4>
+                        <p>India</p>
+                    </div>
+                </div>
+
+                <!-- Destination 3: Tokyo -->
+                <div class="destination-card" onclick="setPrompt('Plan a 7-day budget trip to Tokyo, Japan, including flights and capsule hotels.')">
+                    <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=600&auto=format&fit=crop" alt="Tokyo, Japan">
+                    <div class="destination-info">
+                        <h4>Tokyo</h4>
+                        <p>Japan</p>
+                    </div>
+                </div>
+
+                <!-- Destination 4: Dubai -->
+                <div class="destination-card" onclick="setPrompt('Plan a 4-day desert safari and shopping trip to Dubai.')">
+                    <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=600&auto=format&fit=crop" alt="Dubai, UAE">
+                    <div class="destination-info">
+                        <h4>Dubai</h4>
+                        <p>UAE</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Result Display Section -->
+        <section id="resultSection" class="result-section hidden">
+            <div class="result-header">
+                <div>
+                    <h2>Your AI Travel Plan</h2>
+                    <p id="threadInfo">Thread ID: -</p>
+                </div>
+                <div class="result-actions">
+                    <button class="copy-btn" onclick="copyResult()">Copy</button>
+                    <button class="download-btn" onclick="downloadPDF()">Download PDF</button>
+                </div>
+            </div>
+
+            <div id="pdfContent" class="pdf-content">
+                <h1 class="pdf-title">AI Travel Plan</h1>
+                <div id="resultBox" class="result-box"></div>
+            </div>
+        </section>
+
+        <!-- Error Handling -->
+        <section id="errorBox" class="error-box hidden"></section>
+
+    </main>
+
+    <footer>
+        Built with FastAPI, LangGraph, Groq, PostgreSQL, Tavily and AviationStack
+    </footer>
+
+    <!-- Markdown Renderer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF Download Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Your Custom JS -->
+    <script src="/static/script.js"></script>
+
+</body>
+</html>
