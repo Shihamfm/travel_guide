@@ -1,0 +1,269 @@
+/* --- BASE & SKY BLUE THEME --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-blue: #0077b6; /* Deep sky blue */
+    --light-blue: #caf0f8;   /* Very light sky blue background */
+    --accent-blue: #00b4d8;  /* Bright sky blue for buttons */
+    --text-dark: #03045e;
+    --white: #ffffff;
+    --border-color: #90e0ef;
+}
+
+body {
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    background-color: var(--light-blue);
+    color: var(--text-dark);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* Background Overlay for a premium feel */
+.page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(135deg, #caf0f8 0%, #ade8f4 100%);
+}
+
+.app-container {
+    width: min(1120px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 40px 0 30px;
+}
+
+/* --- HERO SECTION --- */
+.hero-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.badge {
+    display: inline-block;
+    background-color: var(--white);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    box-shadow: 0 2px 10px rgba(0, 119, 182, 0.1);
+    margin-bottom: 15px;
+}
+
+.hero-section h1 {
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    line-height: 1.2;
+}
+
+.hero-section p {
+    max-width: 760px;
+    margin: 0 auto;
+    color: #444;
+    font-size: 1.1rem;
+}
+
+/* --- PLANNER CARD (Input Area) --- */
+.planner-card, .result-section {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 119, 182, 0.15);
+    margin-bottom: 40px;
+}
+
+.card-header, .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.card-header h2 {
+    color: var(--primary-blue);
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.card-header p {
+    color: #666;
+}
+
+.status-pill {
+    display: flex;
+    align-items: center;
+    background-color: #e6f7ff;
+    color: #0077b6;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #00b4d8;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+/* --- FIX: INPUT AREA & BUTTON --- */
+.input-area {
+    display: flex;
+    flex-direction: column; /* This fixes the squished layout! */
+    gap: 15px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    background: #f8fbff;
+    color: #333;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+#sendBtn {
+    align-self: flex-end; /* Pushes button to the right side */
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#sendBtn:hover {
+    background-color: var(--accent-blue);
+}
+
+#sendBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* --- FIX: DESTINATIONS GRID (The missing code) --- */
+.destinations-section {
+    margin-bottom: 40px;
+}
+
+.section-title {
+    text-align: center;
+    color: var(--primary-blue);
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+}
+
+.destinations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.destination-card {
+    background: var(--white);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 119, 182, 0.1);
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.destination-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 119, 182, 0.2);
+}
+
+.destination-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+}
+
+.destination-info {
+    padding: 15px;
+    text-align: center;
+}
+
+.destination-info h4 {
+    margin-bottom: 5px;
+    color: var(--primary-blue);
+    font-size: 1.1rem;
+}
+
+.destination-info p {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* --- RESULTS SECTION --- */
+.result-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.copy-btn, .download-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.copy-btn {
+    background-color: #6c757d;
+}
+
+.download-btn {
+    background-color: #28a745;
+}
+
+.pdf-content {
+    margin-top: 20px;
+}
+
+.loader {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(255,255,255,0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+}
+
+.hidden {
+    display: none !important;
+}
+
+footer {
+    text-align: center;
+    color: #555;
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
