@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dotenv import load_dotenv
 from typing import TypedDict, Annotated
@@ -17,7 +18,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.postgres import PostgresSaver
 
 from tools.flight_tool import search_flights
-from tools.tavily_tool import tavily_research
+# from tools.tavily_tool import tavily_research
+from mcp_client_test import tavily_mcp_search
 
 
 
@@ -74,7 +76,8 @@ def flight_agent(state: TravelState):
 # HOTEL AGENT
 def hotel_agent(state: TravelState):
     query = f"Best hotels for {state['user_query']}"
-    hotel_results = tavily_research(query)
+    # hotel_results = tavily_research(query)
+    hotel_results = asyncio.run(tavily_mcp_search(query))
 
     return{
         'hotel_results': hotel_results,
