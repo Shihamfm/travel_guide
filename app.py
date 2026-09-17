@@ -7,8 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse
 
-
 from backend import run_travel_agent
+
+import nest_asyncio
+nest_asyncio.apply()
 
 app = FastAPI(
     title="TripMate AI",
