@@ -1,40 +1,99 @@
+from asyncio import coroutines
+import typing_inspection
+from mimetypes import init
+from psycopg import connection_async
 import os
+import sys
 import asyncio
 from dotenv import load_dotenv
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
 TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
-AVIATIONSTACK_API_KEY = os.getenv('AVIATIONSTACK_API_KEY')
+AVIATION_STACK_API_KEY = os.getenv('AVIATIONSTACK_API_KEY')
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+
+# Preserve environment for uvx, but strip virtualenv/python paths
+# to avoid binary/module mismatch (e.g., SRE module mismatch) between Python runtimes.
+AVIATION_ENV = os.environ.copy()
+for var in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
+    AVIATION_ENV.pop(var, None)
+
+AVIATION_ENV["AVIATION_STACK_API_KEY"] = (
+    AVIATION_STACK_API_KEY or ""
+)
+
+WEATHER_ENV = os.environ.copy()
+WEATHER_ENV["OPENWEATHER_API_KEY"] = (
+    OPENWEATHER_API_KEY or ""
+)
+
+#LLM
+llm = ChatGroq(
+    model='openai/gpt-oss-120b',
+    api_key=GROQ_API_KEY
+)
 
 client = MultiServerMCPClient(
     {
         "tavily": {
             "transport": "streamable_http",
             "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
-
     },
        
         "aviationstack": {
-        "transport": "stdio",
-        "command": "uvx",
-        "args": [
-        "aviationstack-mcp"
-        ],
-        "env": {
-        "AVIATION_STACK_API_KEY": AVIATIONSTACK_API_KEY
-      }
+            "transport": "stdio",
+            "command": "uvx",
+            "args": [
+                "aviationstack-mcp",
+            ],
+            "env": AVIATION_ENV
+        
+    },
+        "weather": {
+            "transport": "stdio",
+            "command": sys.executable,
+            "args": [
+            r"E:\Projects\DS\travel_guide\custom_weather_mcp_server.py"
+            ],
+            "env": WEATHER_ENV
     }
     }
 ) 
 
 async def get_all_tools():
-    tools = await client.get_tools()
-    print("\n Available MCP Tools \n")
+    """
+    Load each MCP server sperately
+    """
+    all_tools = []
 
-    for tool in tools:
-        print(tool.name)
+    for server_name in (
+        'tavily',
+        'aviationstack',
+        'weather'
+    ):
+        try:
+            tools = await client.get_tools(
+                server_name=server_name
+            )
+            all_tools.extend(tools)
+
+            print(
+                f"\n Available MCP Tools from"
+                f"{server_name} MCP: \n")
+
+            for tool in tools:
+                print(tool.name)
+
+        except Exception as error:
+            print(
+                f"\n Count not connect to "
+                f"{server_name} MCP: \n{error}\n"
+            )
+    return all_tools
 
 
 #tavily and aviation_search tools
@@ -96,9 +155,64 @@ async def tavily_mcp_search(query: str):
 
     return result
 
+#weather tool & forecast tool
+weather_tool = None
+forecast_tool = None
+async def initialize_weather_tools():
+    global weather_tool, forecast_tool
 
+    if weather_tool is not None:
+        return
 
+    tools = await client.get_tools()
 
+    weather_tool = next(
+            tool
+            for tool in tools
+            if tool.name == "get_current_weather"
+        )
 
+    forecast_tool = next(
+            tool
+            for tool in tools
+            if tool.name == "get_forecast"
+        )
 
+# get current weather
+async def weather_mcp_search(city: str):
+
+    await initialize_weather_tools()
+
+    result = await weather_tool.ainvoke(
+        {
+            'city': city
+        }
+    )
+
+    return result
+
+# get forecast weather
+async def forecast_mcp_search(city: str):
+    
+    await initialize_weather_tools()
+
+    result = await forecast_tool.ainvoke(
+        {
+            'city': city
+        }
+    )
+
+    return result
+
+# Destination Extractor
+def extract_destination(query: str):
+    prompt = f"""
+    Extract only the destination city or country.
+    
+    Query: {query}
+
+    Return only destination name
+    """
+    response = llm.invoke(prompt)
+    return response.content.strip()
 
