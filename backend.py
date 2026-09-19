@@ -19,7 +19,8 @@ from langgraph.checkpoint.postgres import PostgresSaver
 
 # from tools.flight_tool import search_flights
 # from tools.tavily_tool import tavily_research
-from mcp_client import avaiation_mcp_call, tavily_mcp_search
+from mcp_client import avaiation_mcp_call, tavily_mcp_search, extract_destination, weather_mcp_search, forecast_mcp_search
+
 
 
 
@@ -59,6 +60,7 @@ class TravelState(TypedDict):
     hotel_results: str
     itinerary: str
     llm_calls: str
+    weather_results: str
 
 # def flight_agent(state: TravelState):
 #     query = state["user_query"]
@@ -152,9 +154,6 @@ def flight_agent(state: TravelState):
     }
 
 
-
-
-
 # HOTEL AGENT
 def hotel_agent(state: TravelState):
     query = f"Best hotels for {state['user_query']}"
@@ -169,6 +168,32 @@ def hotel_agent(state: TravelState):
                 'llm_calls': state.get('llm_calls',0) + 1
     }
 
+# WEATHER AGENT
+def weather_agent(state: TravelState):
+
+    city = extract_destination(state["user_query"])
+    
+    weather_data = asyncio.run(
+        weather_mcp_search(city)
+        )
+    
+    forecast_data = asyncio.run(
+        forecast_mcp_search(city)
+        )
+    
+    return {
+        "weather_results": f"""
+        Current Weather: {weather_data}
+
+        Forecast Weather: {forecast_data}
+
+        """,
+        "messages": [
+            AIMessage(content="Weather information fetched")
+        ]
+    }
+
+    
 
 # ITINERARY AGENT
 def itinerary_agent(state: TravelState):
@@ -178,6 +203,7 @@ Create a complete travel itinerary.
 User Query: {state['user_query']}
 Flight Results: {state['flight_results']}
 Hotel Results: {state['hotel_results']}
+Weather Results: {state['weather_results']}
 
 Make the itinerary practical, budget aware, and easy to follow.
 """
@@ -202,6 +228,7 @@ Generate the final travel response from the user.
 User Request: {state['user_query']}
 Flight: {state['flight_results']}
 Hotel: {state['hotel_results']}
+Weather: {state['weather_results']}
 Itinerary: {state['itinerary']}
 
 Format the final answer beautifully using these sections:
@@ -209,9 +236,10 @@ Format the final answer beautifully using these sections:
 1. Trip Summary
 2. Flight Information
 3. Hotel Suggestions
-4. Day-by-Day Itinerary
-5. Estimated Budget
-6. Final Recommendations
+4. Weather Information
+5. Day-by-Day Itinerary
+6. Estimated Budget
+7. Final Recommendations
 
 Important:
 - Be clear and practical.
@@ -233,12 +261,14 @@ graph = StateGraph(TravelState)
 
 graph.add_node('flight_agent', flight_agent)
 graph.add_node('hotel_agent', hotel_agent)
+graph.add_node('weather_agent', weather_agent)
 graph.add_node('itinerary_agent', itinerary_agent)
 graph.add_node('final_agent', final_agent)
 
 graph.add_edge(START, 'flight_agent')
 graph.add_edge('flight_agent', 'hotel_agent')
-graph.add_edge('hotel_agent', 'itinerary_agent')
+graph.add_edge('hotel_agent', 'weather_agent')
+graph.add_edge('weather_agent', 'itinerary_agent')
 graph.add_edge('itinerary_agent', 'final_agent')
 graph.add_edge('final_agent', END)
 
