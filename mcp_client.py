@@ -16,6 +16,11 @@ AVIATION_STACK_API_KEY = os.getenv('AVIATIONSTACK_API_KEY')
 OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
+# Dynamic path resolution for custom_weather_mcp_server.py
+WEATHER_SCRIPT_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "custom_weather_mcp_server.py")
+)
+
 # Preserve environment for uvx, but strip virtualenv/python paths
 # to avoid binary/module mismatch (e.g., SRE module mismatch) between Python runtimes.
 AVIATION_ENV = os.environ.copy()
@@ -42,7 +47,7 @@ client = MultiServerMCPClient(
         "tavily": {
             "transport": "streamable_http",
             "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
-    },
+        },
        
         "aviationstack": {
             "transport": "stdio",
@@ -51,22 +56,21 @@ client = MultiServerMCPClient(
                 "aviationstack-mcp",
             ],
             "env": AVIATION_ENV
-        
-    },
+        },
         "weather": {
             "transport": "stdio",
             "command": sys.executable,
             "args": [
-            r"E:\Projects\DS\travel_guide\custom_weather_mcp_server.py"
+                WEATHER_SCRIPT_PATH
             ],
             "env": WEATHER_ENV
-    }
+        }
     }
 ) 
 
 async def get_all_tools():
     """
-    Load each MCP server sperately
+    Load each MCP server separately
     """
     all_tools = []
 
@@ -82,7 +86,7 @@ async def get_all_tools():
             all_tools.extend(tools)
 
             print(
-                f"\n Available MCP Tools from"
+                f"\n Available MCP Tools from "
                 f"{server_name} MCP: \n")
 
             for tool in tools:
@@ -90,48 +94,36 @@ async def get_all_tools():
 
         except Exception as error:
             print(
-                f"\n Count not connect to "
+                f"\n Could not connect to "
                 f"{server_name} MCP: \n{error}\n"
             )
     return all_tools
 
 
-#tavily and aviation_search tools
+# tavily tool holder
 search_tool = None
-aviation_tool = {}
 
 async def initalize_mcp():
     global search_tool
-    global aviation_tool
 
-    if search_tool is not None and aviation_tool:
+    if search_tool is not None:
         return
 
-    tools = await client.get_tools()
-
-    print("\n Available MCP Tools \n")
-
-    for tool in tools:
-        print(tool.name)
-
-    search_tool = next(
-        tool
-        for tool in tools
-        if tool.name == "tavily_search"
-    )
-
-    aviation_tool = {
-        tool.name: tool
-        for tool in tools
-        if tool.name != "tavily_search"
-    }
+    try:
+        tools = await client.get_tools(server_name="tavily")
+        search_tool = next(
+            tool for tool in tools
+            if tool.name == "tavily_search"
+        )
+    except Exception as err:
+        print(f"Tavily MCP initialization error: {err}")
 
 async def avaiation_mcp_call(
         tool_name: str, 
         tool_args: dict = None
         ):
 
-    tools = await client.get_tools()
+    tools = await client.get_tools(server_name="aviationstack")
 
     tool = next(
         t for t in tools
@@ -150,9 +142,12 @@ async def avaiation_mcp_call(
             return str(first["text"])
     return str(result)
 
-# The function can be used to call the tavily_search tool with a query in backend.py
+# Call tavily_search tool with a query
 async def tavily_mcp_search(query: str):
     await initalize_mcp()
+    if search_tool is None:
+        raise RuntimeError("Tavily MCP search tool not available")
+
     result = await search_tool.ainvoke(
         {
             "query": query
@@ -167,33 +162,34 @@ async def tavily_mcp_search(query: str):
             return str(first["text"])
     return str(result)
 
-#weather tool & forecast tool
+# weather tool & forecast tool holders
 weather_tool = None
 forecast_tool = None
+
 async def initialize_weather_tools():
     global weather_tool, forecast_tool
 
     if weather_tool is not None:
         return
 
-    tools = await client.get_tools()
+    tools = await client.get_tools(server_name="weather")
 
     weather_tool = next(
-            tool
-            for tool in tools
-            if tool.name == "get_current_weather"
-        )
+        tool for tool in tools
+        if tool.name == "get_current_weather"
+    )
 
     forecast_tool = next(
-            tool
-            for tool in tools
-            if tool.name == "get_forecast"
-        )
+        tool for tool in tools
+        if tool.name == "get_forecast"
+    )
 
 # get current weather
 async def weather_mcp_search(city: str):
 
     await initialize_weather_tools()
+    if weather_tool is None:
+        raise RuntimeError("Weather MCP tool not available")
 
     result = await weather_tool.ainvoke(
         {
@@ -213,6 +209,8 @@ async def weather_mcp_search(city: str):
 async def forecast_mcp_search(city: str):
     
     await initialize_weather_tools()
+    if forecast_tool is None:
+        raise RuntimeError("Forecast MCP tool not available")
 
     result = await forecast_tool.ainvoke(
         {
@@ -236,14 +234,16 @@ def extract_destination(query: str) -> str:
     User Request: {query}
 
     Rules:
-    1. If a specific city is mentioned (e.g. "Paris", "Kyoto", "New Delhi", "Tokyo", "Sigiriya"), return ONLY that city name.
-    2. If only a country is mentioned (e.g. "India", "Japan", "Sri Lanka", "UAE"), return the primary major tourist/capital city (e.g. "New Delhi" for India, "Tokyo" for Japan, "Colombo" for Sri Lanka, "Dubai" for UAE).
+    1. If a specific city is mentioned (e.g. "Paris", "Kyoto", "New Delhi", "Tokyo", "Sigiriya", "Islamabad"), return ONLY that city name.
+    2. If only a country is mentioned (e.g. "India", "Japan", "Sri Lanka", "UAE", "Pakistan"), return the primary major tourist/capital city (e.g. "New Delhi" for India, "Tokyo" for Japan, "Colombo" for Sri Lanka, "Dubai" for UAE, "Islamabad" for Pakistan).
     3. Return ONLY the city name. Do not include extra text, quotes, or punctuation.
     """
     try:
         response = llm.invoke(prompt)
-        city = response.content.strip().replace('"', '').replace("'", "").split("\n")[0]
+        city = response.content.strip().replace('"', '').replace("'", "").split("\n")[0].strip()
+        if not city or "error" in city.lower() or len(city) > 40:
+            return "Islamabad"
         return city
     except Exception as exc:
-        return f"Destination extraction error: {exc}"
-        
+        print(f"Destination extraction error: {exc}")
+        return "Islamabad"

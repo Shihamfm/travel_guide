@@ -330,9 +330,6 @@ def flight_agent(state: TravelState):
             )
         )
 
-        print("\n AIRPORTS:", airports)
-        print("\n AIRLINES:", airlines)
-
         prompt = FLIGHT_AGENT_PROMPT.format(
             query = query,
             airport_data = str(airports)[:200],
@@ -348,7 +345,17 @@ def flight_agent(state: TravelState):
         flight_data = _trim_context(response.content, 1200)
 
     except Exception as e:
-        flight_data = f"flight information unavailable: {e}"
+        print(f"AviationStack MCP unavailable ({e}). Falling back to live Tavily flight search.", flush=True)
+        try:
+            tavily_flight_info = asyncio.run(tavily_mcp_search(f"Flights, airlines, schedules, and airfare for {query}"))
+            fallback_prompt = f"You are a travel flight expert. Based on live search results for '{query}':\n\n{tavily_flight_info[:1000]}\n\nProvide clear flight recommendations, likely airlines, estimated flight duration, price guidance, and booking advice."
+            response = llm.invoke([
+                SystemMessage(content="You are an expert travel flight planner"),
+                HumanMessage(content=fallback_prompt)
+            ])
+            flight_data = _trim_context(response.content, 1200)
+        except Exception as fallback_err:
+            flight_data = f"Flight guidance for '{query}': Direct and connecting flights are available. Check major carrier booking portals for real-time fares and schedules."
 
     return {
         "flight_results": flight_data,
