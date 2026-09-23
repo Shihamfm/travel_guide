@@ -110,6 +110,15 @@ def _llm_text(system_prompt: str, user_prompt: str) -> str:
     )
 
     return response.content
+
+def _trim_context(text: Any, max_chars: int = 1200) -> str:
+    """Helper to bound context string lengths to prevent Groq TPM rate limits."""
+    if not text:
+        return ""
+    text_str = str(text).strip()
+    if len(text_str) <= max_chars:
+        return text_str
+    return text_str[:max_chars] + "\n...[context trimmed for token limits]..."
     
 def _json_from_llm(text: str) -> dict:
     """Extract the first complete JSON object return by the model"""
@@ -326,8 +335,8 @@ def flight_agent(state: TravelState):
 
         prompt = FLIGHT_AGENT_PROMPT.format(
             query = query,
-            airport_data = str(airports)[:50],
-            airline_data = str(airlines)[:50]
+            airport_data = str(airports)[:200],
+            airline_data = str(airlines)[:200]
         )
 
         response = llm.invoke([
@@ -336,10 +345,10 @@ def flight_agent(state: TravelState):
             ),
             HumanMessage(content=prompt)
         ])
-        flight_data = response.content
+        flight_data = _trim_context(response.content, 1200)
 
     except Exception as e:
-        flight_data = f"flight information unavailable: str{e}"
+        flight_data = f"flight information unavailable: {e}"
 
     return {
         "flight_results": flight_data,
@@ -355,6 +364,7 @@ def hotel_agent(state: TravelState):
     
     try: 
         hotel_results = asyncio.run(tavily_mcp_search(query))
+        hotel_results = _trim_context(hotel_results, 1200)
 
     except Exception as exc:
         print(
@@ -397,6 +407,7 @@ def weather_agent(state: TravelState):
 
         Forecast Weather: {forecast_data}
         """
+        weather_results = _trim_context(weather_results, 800)
     except Exception as exc:
         print(
             f"WEATHER AGENT MCP ERROR: "
@@ -424,9 +435,9 @@ def budget_agent(state: TravelState):
 
     User Query: {state['user_query']}
     Trip Constraints: {state.get('trip_constraints', {})}
-    Flight Results: {state.get('flight_results', {})}
-    Hotel Results: {state.get('hotel_results', {})}
-    Weather Results: {state.get('weather_results', {})}
+    Flight Results: {_trim_context(state.get('flight_results', ''))}
+    Hotel Results: {_trim_context(state.get('hotel_results', ''))}
+    Weather Results: {_trim_context(state.get('weather_results', ''))}
     
     Return:
     1. Estimated cost categories
@@ -441,8 +452,8 @@ def budget_agent(state: TravelState):
         user_prompt=prompt
     )
     return {
-        "budget_results": response.content,
-        "messages": [AIMessage(content="Budget Assesment generated")],
+        "budget_results": _trim_context(response, 1200),
+        "messages": [AIMessage(content="Budget Assessment generated")],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
@@ -453,10 +464,10 @@ Create a complete travel itinerary.
 
 User Query: {state['user_query']}
 Trip Constraints: {state.get('trip_constraints', {})}
-Flight Results: {state.get('flight_results', {})}
-Hotel Results: {state.get('hotel_results', {})}
-Weather Results: {state.get('weather_results', {})}
-Budget Results: {state.get('budget_results', {})}
+Flight Results: {_trim_context(state.get('flight_results', ''))}
+Hotel Results: {_trim_context(state.get('hotel_results', ''))}
+Weather Results: {_trim_context(state.get('weather_results', ''))}
+Budget Results: {_trim_context(state.get('budget_results', ''))}
 
 Make the itinerary practical, budget aware, and easy to follow.
 Create a clear draft that is ready for human review.
@@ -473,8 +484,8 @@ Create a clear draft that is ready for human review.
     )
 
     return {
-        'itinerary': response.content,
-        'approval request': approval_request,
+        'itinerary': _trim_context(response, 2000),
+        'approval_request': approval_request,
         'messages': [AIMessage(content="Draft itinerary created for human review.")],
         'llm_calls': state.get('llm_calls',0) + 1
     }
@@ -532,7 +543,7 @@ def route_after_agent(current_agent: str):
         selected = _selected_agents(state)
         current_index = AGENT_ORDER.index(current_agent)
 
-        for next_agent in AGENT_ORDER[current_index + 1]:
+        for next_agent in AGENT_ORDER[current_index + 1:]:
             if next_agent in selected:
                 return next_agent
         
@@ -554,16 +565,16 @@ The user requested a revision. Apply this feedback carefully:
 """
 
     final_prompt = f"""
-Generate the final travel response from the user.
+Generate the final travel response for the user.
 
 Human Review: {review_instruction}
 User Request: {state['user_query']}
 Trip Constraints: {state.get('trip_constraints', {})}
-Flight: {state.get('flight_results', {})}
-Hotel Results: {state.get('hotel_results', {})}
-Weather Results: {state.get('weather_results', {})}
-Budget Results: {state.get('budget_results', {})}
-Draft_Itinerary: {state.get("itinerary", "")}
+Flight: {_trim_context(state.get('flight_results', ''))}
+Hotel Results: {_trim_context(state.get('hotel_results', ''))}
+Weather Results: {_trim_context(state.get('weather_results', ''))}
+Budget Results: {_trim_context(state.get('budget_results', ''))}
+Draft_Itinerary: {_trim_context(state.get('itinerary', ''), 1500)}
 
 
 Format the final answer beautifully using these sections:
@@ -608,10 +619,10 @@ graph.add_node('final_agent', final_agent)
 
 graph.add_edge(START, 'supervisor')
 graph.add_conditional_edges('supervisor', route_from_supervisor, ROUTE_MAP)
-graph.add_conditional_edges('flight_agent', route_after_agent, ROUTE_MAP)
-graph.add_conditional_edges('hotel_agent', route_after_agent, ROUTE_MAP)
-graph.add_conditional_edges('weather_agent', route_after_agent, ROUTE_MAP)
-graph.add_conditional_edges('budget_agent', route_after_agent, ROUTE_MAP)
+graph.add_conditional_edges('flight_agent', route_after_agent('flight_agent'), ROUTE_MAP)
+graph.add_conditional_edges('hotel_agent', route_after_agent('hotel_agent'), ROUTE_MAP)
+graph.add_conditional_edges('weather_agent', route_after_agent('weather_agent'), ROUTE_MAP)
+graph.add_conditional_edges('budget_agent', route_after_agent('budget_agent'), ROUTE_MAP)
 
 graph.add_edge('itinerary_agent', 'human_approval')
 graph.add_edge('human_approval', 'final_agent')
@@ -721,7 +732,6 @@ def run_travel_agent(user_input: str, thread_id: str | None = None):
         },
         config=config
     )
-    final_answer = result['messages'][-1].content
 
     return _serialize_result(result, thread_id)
 
