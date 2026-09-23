@@ -359,11 +359,30 @@ def flight_agent(state: TravelState):
 
 # HOTEL AGENT
 def hotel_agent(state: TravelState):
-    query = f"Best hotels for {state['user_query']}"
-    # hotel_results = tavily_research(query)
+    constraints = state.get('trip_constraints', {})
+    dest = constraints.get('destination') or extract_destination(state['user_query'])
+    query = f"Best hotels and accommodation in {dest}"
     
     try: 
-        hotel_results = asyncio.run(tavily_mcp_search(query))
+        raw_text = asyncio.run(tavily_mcp_search(query))
+        
+        # Inline Tavily search result parsing & markdown formatting
+        try:
+            data = json.loads(raw_text)
+            if isinstance(data, dict) and "results" in data:
+                formatted = [f"### 🏨 Hotel & Accommodation Research for {dest}\n"]
+                for idx, res in enumerate(data["results"][:4], 1):
+                    title = res.get("title", f"Hotel Result {idx}")
+                    content = res.get("content", "").strip()
+                    url = res.get("url", "")
+                    link_str = f" [Link]({url})" if url else ""
+                    formatted.append(f"**{idx}. {title}**{link_str}\n{content}\n")
+                hotel_results = "\n".join(formatted)
+            else:
+                hotel_results = f"### 🏨 Hotel Recommendations for {dest}\n\n" + str(raw_text)
+        except Exception:
+            hotel_results = f"### 🏨 Hotel Recommendations for {dest}\n\n" + str(raw_text)
+
         hotel_results = _trim_context(hotel_results, 1200)
 
     except Exception as exc:
@@ -374,39 +393,65 @@ def hotel_agent(state: TravelState):
         )
 
         hotel_results = (
-            "Live hotel search is temporarily unavailable. "
+            f"Live hotel search is temporarily unavailable for {dest}. "
             "Provide general accommodation and neighborhood "
             "guidance based on the destination and clearly "
             "label it as non-live advice."
         ) 
 
-    return{
+    return {
         'hotel_results': hotel_results,
         'messages': [
-                    AIMessage(content="Hotel information fetched")
-                ],
-                'llm_calls': state.get('llm_calls',0) + 1
+            AIMessage(content="Hotel information fetched")
+        ],
+        'llm_calls': state.get('llm_calls', 0) + 1
     }
 
 # WEATHER AGENT
 def weather_agent(state: TravelState):
-
-    city = extract_destination(state["user_query"])
+    constraints = state.get('trip_constraints', {})
+    city = constraints.get('destination') or extract_destination(state["user_query"])
+    if "," in city:
+        city = city.split(",")[0].strip()
 
     try:
-        weather_data = asyncio.run(
-            weather_mcp_search(city)
-            )
+        current_raw = asyncio.run(weather_mcp_search(city))
+        forecast_raw = asyncio.run(forecast_mcp_search(city))
         
-        forecast_data = asyncio.run(
-            forecast_mcp_search(city)
-            )
+        # Inline OpenWeather result parsing & markdown formatting
+        lines = [f"### 🌤️ Weather Analysis for {city.title()}\n"]
         
-        weather_results = f"""
-        Current Weather: {weather_data}
+        try:
+            cur_json = json.loads(current_raw)
+            if isinstance(cur_json, dict) and "temperature_c" in cur_json:
+                temp = cur_json.get("temperature_c")
+                humidity = cur_json.get("humidity")
+                cond = cur_json.get("condition")
+                wind = cur_json.get("wind_speed")
+                lines.append(f"**Current Conditions:** {cond.title() if cond else 'N/A'}")
+                lines.append(f"- 🌡️ **Temperature:** {temp}°C")
+                lines.append(f"- 💧 **Humidity:** {humidity}%")
+                lines.append(f"- 💨 **Wind Speed:** {wind} m/s\n")
+            else:
+                lines.append(f"Current Weather: {current_raw}\n")
+        except Exception:
+            lines.append(f"Current Weather: {current_raw}\n")
 
-        Forecast Weather: {forecast_data}
-        """
+        try:
+            fc_json = json.loads(forecast_raw)
+            if isinstance(fc_json, dict) and "forecast" in fc_json:
+                lines.append("**Upcoming Forecast:**")
+                for item in fc_json["forecast"][:4]:
+                    dt = item.get("datetime", "")
+                    t = item.get("temperature", "")
+                    w = item.get("weather", "")
+                    lines.append(f"- `{dt}`: {t}°C, {w}")
+            else:
+                lines.append(f"Forecast: {forecast_raw}")
+        except Exception:
+            lines.append(f"Forecast: {forecast_raw}")
+
+        weather_results = "\n".join(lines)
         weather_results = _trim_context(weather_results, 800)
     except Exception as exc:
         print(
@@ -416,7 +461,7 @@ def weather_agent(state: TravelState):
         )
 
         weather_results = (
-            "Live weather information is temporarily unavailable. "
+            f"Live weather information for {city} is temporarily unavailable. "
             "Provide general weather guidance based on the destination "
             "and clearly label it as non-live advice."
         )
@@ -425,7 +470,8 @@ def weather_agent(state: TravelState):
         "weather_results": weather_results,
         "messages": [
             AIMessage(content="Weather information fetched")
-        ]
+        ],
+        "llm_calls": state.get("llm_calls", 0) + 1
     }
 
 # BUDGET AGENT

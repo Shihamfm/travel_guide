@@ -142,7 +142,13 @@ async def avaiation_mcp_call(
         tool_args or {}
     )
 
-    return result
+    if isinstance(result, list) and len(result) > 0:
+        first = result[0]
+        if hasattr(first, "text"):
+            return str(first.text)
+        if isinstance(first, dict) and "text" in first:
+            return str(first["text"])
+    return str(result)
 
 # The function can be used to call the tavily_search tool with a query in backend.py
 async def tavily_mcp_search(query: str):
@@ -153,7 +159,13 @@ async def tavily_mcp_search(query: str):
         }
     )
 
-    return result
+    if isinstance(result, list) and len(result) > 0:
+        first = result[0]
+        if hasattr(first, "text"):
+            return str(first.text)
+        if isinstance(first, dict) and "text" in first:
+            return str(first["text"])
+    return str(result)
 
 #weather tool & forecast tool
 weather_tool = None
@@ -189,7 +201,13 @@ async def weather_mcp_search(city: str):
         }
     )
 
-    return result
+    if isinstance(result, list) and len(result) > 0:
+        first = result[0]
+        if hasattr(first, "text"):
+            return str(first.text)
+        if isinstance(first, dict) and "text" in first:
+            return str(first["text"])
+    return str(result)
 
 # get forecast weather
 async def forecast_mcp_search(city: str):
@@ -202,17 +220,30 @@ async def forecast_mcp_search(city: str):
         }
     )
 
-    return result
+    if isinstance(result, list) and len(result) > 0:
+        first = result[0]
+        if hasattr(first, "text"):
+            return str(first.text)
+        if isinstance(first, dict) and "text" in first:
+            return str(first["text"])
+    return str(result)
 
 # Destination Extractor
-def extract_destination(query: str):
+def extract_destination(query: str) -> str:
     prompt = f"""
-    Extract only the destination city or country.
+    Extract the primary destination CITY for travel weather and hotel planning.
     
-    Query: {query}
+    User Request: {query}
 
-    Return only destination name
+    Rules:
+    1. If a specific city is mentioned (e.g. "Paris", "Kyoto", "New Delhi", "Tokyo", "Sigiriya"), return ONLY that city name.
+    2. If only a country is mentioned (e.g. "India", "Japan", "Sri Lanka", "UAE"), return the primary major tourist/capital city (e.g. "New Delhi" for India, "Tokyo" for Japan, "Colombo" for Sri Lanka, "Dubai" for UAE).
+    3. Return ONLY the city name. Do not include extra text, quotes, or punctuation.
     """
-    response = llm.invoke(prompt)
-    return response.content.strip()
-
+    try:
+        response = llm.invoke(prompt)
+        city = response.content.strip().replace('"', '').replace("'", "").split("\n")[0]
+        return city
+    except Exception as exc:
+        return f"Destination extraction error: {exc}"
+        
