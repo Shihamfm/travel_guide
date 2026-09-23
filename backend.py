@@ -252,7 +252,7 @@ User request:
         )
 
     return {
-        "guardrails_allowed": True,
+        "guardrail_allowed": True,
         "guardrail_reason": guardrail_reason,
         "selected_agents": selected_agents,
         "trip_constraints": constraints,
@@ -341,9 +341,9 @@ def flight_agent(state: TravelState):
     except Exception as e:
         flight_data = f"flight information unavailable: str{e}"
 
-    return{
+    return {
         "flight_results": flight_data,
-        "message": [AIMessage(content="Flight recommendation generated")],
+        "messages": [AIMessage(content="Flight recommendation generated")],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
@@ -503,8 +503,8 @@ def human_approval_agent(state:TravelState):
     return {
         'approved': approved,
         'human_feedback': human_feedback,
-        'message': [AIMessage(content="Human approval step completed")],
-        }
+        'messages': [AIMessage(content="Human approval step completed")],
+    }
 
 # Dynamic Supervisor Routing
 ROUTE_MAP = {
@@ -563,7 +563,7 @@ Flight: {state.get('flight_results', {})}
 Hotel Results: {state.get('hotel_results', {})}
 Weather Results: {state.get('weather_results', {})}
 Budget Results: {state.get('budget_results', {})}
-Draft_Itinerary: state.get("itinerary", ""),
+Draft_Itinerary: {state.get("itinerary", "")}
 
 
 Format the final answer beautifully using these sections:
@@ -665,7 +665,7 @@ def _serialize_result(
             if interrupt_payload
             else result.get("approval_request", "")
         ),
-        "flight_results": result.get('fligh_results', ""),
+        "flight_results": result.get('flight_results', ""),
         "hotel_results": result.get("hotel_results", ""),
         "weather_results": result.get("weather_results", ""),
         "budget_results": result.get("budget_results", ""),

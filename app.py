@@ -67,13 +67,7 @@ async def travel_planner(request_data: TravelRequest):
         return JSONResponse(
             content={
                 'success': True,
-                'thread_id': result['thread_id'],
-                'answer': result['answer'],
-                'flight_results': result['flight_results'],
-                'hotel_results': result['hotel_results'],
-                'itinerary': result['itinerary'],
-                'llm_calls': result['llm_calls']
-
+                **result,
             }
         )
 
