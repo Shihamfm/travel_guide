@@ -3,142 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Travel Guide</title>
+    <title>TripMate AI — Multi-Agent Travel Planner</title>
     
-    <!-- Link to your CSS file -->
-    <link rel="stylesheet" href="/static/style.css?v=2.0">
+    <!-- Link to CSS stylesheet -->
+    <link rel="stylesheet" href="/static/style.css?v=3.0">
     
-    <!-- Google Fonts for a clean, modern look -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
     <div class="page-bg">
         <div class="gradient-overlay"></div>
+        <div class="bg-blur-circle circle-1"></div>
+        <div class="bg-blur-circle circle-2"></div>
     </div>
+
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <span class="brand-icon">✈️</span>
+                <span class="brand-name">TripMate <span>AI</span></span>
+            </div>
+
+            <div class="header-controls">
+                <div class="status-pill" id="backendStatus">
+                    <span class="status-dot"></span>
+                    <span>System Ready</span>
+                </div>
+
+                <div id="threadBar" class="thread-bar hidden">
+                    <span class="thread-label">Thread:</span>
+                    <span id="activeThreadId" class="thread-id-badge">-</span>
+                    <button class="icon-btn" onclick="copyThreadId()" title="Copy Thread ID">📋</button>
+                    <button class="new-trip-btn" onclick="resetTripSession()">+ New Trip</button>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <main class="app-container">
 
         <!-- Hero / Title Section -->
         <section class="hero-section">
             <div class="badge">
-                ✈️ TripMate AI — Multi-Agent Travel Planner
+                ✨ LangGraph Multi-Agent Engine • Groq LLM • Aviation & Tavily MCP
             </div>
             <h1>
-                Plan Your Perfect Trip with AI
+                Intelligent Travel Planning, <br><span class="gradient-text">Designed for You</span>
             </h1>
             <p>
-                Search flights, discover hotels, and generate a complete travel itinerary in seconds.
+                Specialized AI agents collaborate to search flights, analyze hotels, check live weather forecasts, evaluate budgets, and build your custom itinerary.
             </p>
+
+            <div class="agent-pills">
+                <span class="agent-pill">✈️ Flight Specialist</span>
+                <span class="agent-pill">🏨 Hotel Research</span>
+                <span class="agent-pill">🌤️ Live Weather</span>
+                <span class="agent-pill">💰 Budget Expert</span>
+                <span class="agent-pill">📅 Itinerary Planner</span>
+                <span class="agent-pill highlight">👤 Human Review</span>
+            </div>
         </section>
 
         <!-- Input Area Section -->
         <section class="planner-card">
             <div class="card-header">
                 <div>
-                    <h2>Where do you want to go?</h2>
-                    <p>
-                        Example: Plan a complete 5 days Japan trip from Sri Lanka under 2 lakhs.
+                    <h2>Where would you like to travel?</h2>
+                    <p class="subtitle">
+                        Describe your dream trip, destination, dates, departure city, budget, or preferred style.
                     </p>
-                </div>
-                <div class="status-pill">
-                    <span class="status-dot"></span>
-                    Online
                 </div>
             </div>
 
             <div class="input-area">
-                <textarea
-                    id="userInput"
-                    placeholder="Describe your dream vacation..."
-                ></textarea>
+                <div class="textarea-wrapper">
+                    <textarea
+                        id="userInput"
+                        placeholder="e.g. Plan a 5-day trip to Tokyo from Sri Lanka under 2500 USD focusing on culture, tech, and delicious street food..."
+                        rows="4"
+                    ></textarea>
+                    <span class="shortcut-hint">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to submit</span>
+                </div>
 
-                <button id="sendBtn" onclick="sendMessage()">
-                    <span id="btnText">Generate Plan</span>
-                    <span id="btnLoader" class="loader hidden"></span>
-                </button>
+                <div class="input-actions">
+                    <button id="sendBtn" onclick="sendMessage()">
+                        <span id="btnText">⚡ Generate Travel Plan</span>
+                        <span id="btnLoader" class="loader-container hidden">
+                            <span class="spinner"></span>
+                            <span>Agents at work...</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Agent Progress Pipeline Tracker -->
+            <div id="progressPipeline" class="progress-pipeline hidden">
+                <div class="pipeline-title">Agent Execution Stream</div>
+                <div class="pipeline-steps">
+                    <div class="step" id="step-supervisor">
+                        <div class="step-icon">🎯</div>
+                        <div class="step-label">Supervisor Routing</div>
+                    </div>
+                    <div class="step" id="step-specialists">
+                        <div class="step-icon">🔍</div>
+                        <div class="step-label">Specialist Agents</div>
+                    </div>
+                    <div class="step" id="step-itinerary">
+                        <div class="step-icon">📅</div>
+                        <div class="step-label">Drafting Itinerary</div>
+                    </div>
+                    <div class="step" id="step-approval">
+                        <div class="step-icon">👤</div>
+                        <div class="step-label">Human Review</div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Popular Destinations Image Grid -->
+        <!-- Popular Destinations Grid -->
         <section class="destinations-section">
-            <h3 class="section-title">Popular Destinations</h3>
+            <h3 class="section-title">Popular Travel Inspirations</h3>
             <div class="destinations-grid">
                 
-                <!-- Destination 1: Sigiriya -->
-                <div class="destination-card" onclick="setPrompt('Plan a 5-day historical trip to Sigiriya, Sri Lanka, including nearby hotels and travel options.')">
-                    <img src="static\image\Sigiriya.jpeg" alt="Sigiriya, Sri Lanka">
+                <div class="destination-card" onclick="setPrompt('Plan a 5-day cultural and scenic trip to Sigiriya and Kandy, Sri Lanka, including boutique hotels and local transport options.')">
+                    <div class="img-wrapper">
+                        <img src="static/image/Sigiriya.jpeg" alt="Sigiriya, Sri Lanka" onerror="this.src='https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?q=80&w=600&auto=format&fit=crop'">
+                    </div>
                     <div class="destination-info">
-                        <h4>Sigiriya</h4>
-                        <p>Sri Lanka</p>
+                        <h4>Sigiriya & Kandy</h4>
+                        <p>Sri Lanka • Heritage & Nature</p>
                     </div>
                 </div>
 
-                <!-- Destination 2: Taj Mahal -->
-                <div class="destination-card" onclick="setPrompt('Plan a 3-day cultural tour of the Taj Mahal in Agra, India, with luxury hotel recommendations.')">
-                    <img src="static\image\Taj_Mahal.jpeg" alt="Taj Mahal, India">
+                <div class="destination-card" onclick="setPrompt('Plan a 3-day golden triangle cultural tour visiting the Taj Mahal in Agra, India, with luxury heritage hotel recommendations.')">
+                    <div class="img-wrapper">
+                        <img src="static/image/Taj_Mahal.jpeg" alt="Taj Mahal, India" onerror="this.src='https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=600&auto=format&fit=crop'">
+                    </div>
                     <div class="destination-info">
-                        <h4>Taj Mahal</h4>
-                        <p>India</p>
+                        <h4>Taj Mahal & Agra</h4>
+                        <p>India • World Wonder</p>
                     </div>
                 </div>
 
-                <!-- Destination 3: Tokyo -->
-                <div class="destination-card" onclick="setPrompt('Plan a 7-day budget trip to Tokyo, Japan, including flights and capsule hotels.')">
-                    <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=600&auto=format&fit=crop" alt="Tokyo, Japan">
+                <div class="destination-card" onclick="setPrompt('Plan a 7-day budget trip to Tokyo & Kyoto, Japan, including flight advice, capsule/mid-range hotels, and railway pass tips.')">
+                    <div class="img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=600&auto=format&fit=crop" alt="Tokyo, Japan">
+                    </div>
                     <div class="destination-info">
-                        <h4>Tokyo</h4>
-                        <p>Japan</p>
+                        <h4>Tokyo & Kyoto</h4>
+                        <p>Japan • Modern & Tradition</p>
                     </div>
                 </div>
 
-                <!-- Destination 4: Dubai -->
-                <div class="destination-card" onclick="setPrompt('Plan a 4-day desert safari and shopping trip to Dubai.')">
-                    <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=600&auto=format&fit=crop" alt="Dubai, UAE">
+                <div class="destination-card" onclick="setPrompt('Plan a 4-day desert safari, luxury resort, and shopping itinerary for Dubai on a flexible budget.')">
+                    <div class="img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=600&auto=format&fit=crop" alt="Dubai, UAE">
+                    </div>
                     <div class="destination-info">
                         <h4>Dubai</h4>
-                        <p>UAE</p>
+                        <p>UAE • Luxury & Adventure</p>
                     </div>
                 </div>
 
             </div>
         </section>
 
-        <!-- Result Display Section -->
+        <!-- Guardrail Block Warning Box -->
+        <section id="guardrailBox" class="guardrail-card hidden">
+            <div class="guardrail-header">
+                <span class="guardrail-icon">🛡️</span>
+                <div>
+                    <h3>Input Guardrail Flag</h3>
+                    <p id="guardrailReason">TripMate AI only handles travel-related planning requests.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Human In The Loop (HITL) Approval / Feedback Card -->
+        <section id="approvalCard" class="approval-card hidden">
+            <div class="approval-header">
+                <div class="approval-title-group">
+                    <span class="pulse-badge">HITL Interrupted</span>
+                    <h2>Draft Itinerary Review Required</h2>
+                </div>
+                <p id="approvalPromptText" class="approval-prompt">
+                    The multi-agent system has generated a draft itinerary. Please review below and choose to approve or request specific revisions.
+                </p>
+            </div>
+
+            <div class="approval-actions">
+                <button class="approve-btn" onclick="submitApproval(true)">
+                    <span>✅ Approve & Finalize Plan</span>
+                </button>
+                <button class="revision-toggle-btn" onclick="toggleRevisionBox()">
+                    <span>💬 Request Revisions...</span>
+                </button>
+            </div>
+
+            <div id="revisionContainer" class="revision-container hidden">
+                <label for="feedbackInput">Provide revision instructions for the agents:</label>
+                <textarea
+                    id="feedbackInput"
+                    placeholder="e.g. Add a day trip to Nara, choose lower budget hotels, or suggest vegetarian restaurants..."
+                    rows="3"
+                ></textarea>
+                <div class="revision-actions">
+                    <button class="submit-feedback-btn" onclick="submitApproval(false)">
+                        <span>Submit Revisions to AI</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trip Summary & Agent Insights Bar -->
+        <section id="tripContextSection" class="trip-context-card hidden">
+            <div class="context-header">
+                <h3>Structured AI Constraints & Routing</h3>
+                <button class="toggle-reasoning-btn" onclick="toggleSupervisorReasoning()">
+                    <span id="reasoningToggleIcon">▼</span> Routing Insights
+                </button>
+            </div>
+
+            <div id="constraintsTags" class="constraints-tags">
+                <!-- Populated dynamically via JS -->
+            </div>
+
+            <div id="supervisorReasoningBox" class="reasoning-box hidden">
+                <strong>Supervisor Routing Logic:</strong>
+                <p id="supervisorReasoningText"></p>
+            </div>
+        </section>
+
+        <!-- Main Result Display Section with Tabs -->
         <section id="resultSection" class="result-section hidden">
             <div class="result-header">
                 <div>
-                    <h2>Your AI Travel Plan</h2>
-                    <p id="threadInfo">Thread ID: -</p>
+                    <h2>Travel Plan & Specialist Breakdown</h2>
+                    <p id="threadInfoText" class="subtext">Thread ID: -</p>
                 </div>
                 <div class="result-actions">
-                    <button class="copy-btn" onclick="copyResult()">Copy</button>
-                    <button class="download-btn" onclick="downloadPDF()">Download PDF</button>
+                    <button class="copy-btn" onclick="copyResult()">
+                        <span>📋 Copy Plan</span>
+                    </button>
+                    <button class="download-btn" onclick="downloadPDF()">
+                        <span>📄 Download PDF</span>
+                    </button>
                 </div>
             </div>
 
-            <div id="pdfContent" class="pdf-content">
-                <h1 class="pdf-title">AI Travel Plan</h1>
-                <div id="resultBox" class="result-box"></div>
+            <!-- Tab Navigation Header -->
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="switchTab('fullPlanTab', this)">
+                    📋 Complete Plan
+                </button>
+                <button class="tab-btn" onclick="switchTab('flightTab', this)">
+                    ✈️ Flights
+                </button>
+                <button class="tab-btn" onclick="switchTab('hotelTab', this)">
+                    🏨 Hotels
+                </button>
+                <button class="tab-btn" onclick="switchTab('weatherTab', this)">
+                    🌤️ Weather
+                </button>
+                <button class="tab-btn" onclick="switchTab('budgetTab', this)">
+                    💰 Budget
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content-container">
+                
+                <!-- Complete Plan Tab -->
+                <div id="fullPlanTab" class="tab-pane active">
+                    <div id="pdfContent" class="pdf-content">
+                        <div id="resultBox" class="markdown-body"></div>
+                    </div>
+                </div>
+
+                <!-- Flight Specialist Tab -->
+                <div id="flightTab" class="tab-pane">
+                    <div class="specialist-header">
+                        <span class="specialist-icon">✈️</span>
+                        <h3>Flight Specialist Insights</h3>
+                    </div>
+                    <div id="flightBox" class="markdown-body">No flight details generated.</div>
+                </div>
+
+                <!-- Hotel Specialist Tab -->
+                <div id="hotelTab" class="tab-pane">
+                    <div class="specialist-header">
+                        <span class="specialist-icon">🏨</span>
+                        <h3>Hotel & Accommodation Research</h3>
+                    </div>
+                    <div id="hotelBox" class="markdown-body">No hotel details generated.</div>
+                </div>
+
+                <!-- Weather Specialist Tab -->
+                <div id="weatherTab" class="tab-pane">
+                    <div class="specialist-header">
+                        <span class="specialist-icon">🌤️</span>
+                        <h3>Live Weather & Forecast Analysis</h3>
+                    </div>
+                    <div id="weatherBox" class="markdown-body">No weather data generated.</div>
+                </div>
+
+                <!-- Budget Specialist Tab -->
+                <div id="budgetTab" class="tab-pane">
+                    <div class="specialist-header">
+                        <span class="specialist-icon">💰</span>
+                        <h3>Budget Feasibility & Financial Advice</h3>
+                    </div>
+                    <div id="budgetBox" class="markdown-body">No budget assessment generated.</div>
+                </div>
+
             </div>
         </section>
 
-        <!-- Error Handling -->
+        <!-- Error Handling Container -->
         <section id="errorBox" class="error-box hidden"></section>
 
     </main>
 
+    <!-- Floating Toast Notification System -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <footer>
-        Built with FastAPI, LangGraph, Groq, PostgreSQL, Tavily and AviationStack
+        <div class="footer-content">
+            <p><strong>TripMate AI</strong> — Engineered with FastAPI, LangGraph Multi-Agent State Graph, Groq LLM, Aviation & Tavily MCP.</p>
+        </div>
     </footer>
 
     <!-- Markdown Renderer -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- PDF Download Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Your Custom JS -->
-    <script src="/static/script.js"></script>
+    <!-- Custom Application JS -->
+    <script src="/static/script.js?v=3.0"></script>
 
 </body>
 </html>
