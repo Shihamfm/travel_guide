@@ -26,7 +26,7 @@ This Agentic AI setup transitions from static conversational agents to a dynamic
 
 ---
 
-![System Architecture](static\image\system_architecture.jpg)
+![System Architecture](static/image/system_architecture.jpg)
 
 
 ## 🛠️ Prerequisites
