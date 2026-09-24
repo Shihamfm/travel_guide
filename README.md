@@ -22,6 +22,12 @@ This Agentic AI setup transitions from static conversational agents to a dynamic
 *   **Human-in-the-Loop (HITL) Checkpoint:** Forces the workflow to pause, allowing users to review the generated itinerary, approve it, or provide natural language feedback to request changes, looping back to the relevant specialist agents.
 
 ---
+## Diagram of System Architecture
+
+---
+
+![System Architecture](static\image\system_architecture.jpg)
+
 
 ## 🛠️ Prerequisites
 
